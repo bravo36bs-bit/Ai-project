@@ -1,22 +1,80 @@
-import { useState } from 'react';
-
+import { useState, useRef, useEffect } from 'react';
+import ChatBubble from './components/ChatBubble';
+import MessageInput from './components/MessageInput';
+import Header from './components/Header';
 import {
   View,
- Text,
+  Text,
   TextInput,
   TouchableOpacity,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
   const [message, setMessage] = useState('');
 
-  const [messages, setMessages] = useState([
-    {
-      role: 'ai',
-      text: 'هلا شلون أگدر أساعدك؟',
-    },
-  ]);
+  const [loading, setLoading] = useState(false);
+
+  const [messages, setMessages] = useState([]);
+
+  const scrollViewRef = useRef();
+  useEffect(() => {
+  loadMessages();
+}, []);
+const clearChat = async () => {
+  try {
+    await AsyncStorage.removeItem(
+      'messages'
+    );
+
+    setMessages([
+      {
+        role: 'ai',
+        text: 'هلا شلون أگدر أساعدك؟',
+      },
+    ]);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+useEffect(() => {
+  saveMessages();
+}, [messages]);
+
+const saveMessages = async () => {
+  try {
+    await AsyncStorage.setItem(
+      'messages',
+      JSON.stringify(messages)
+    );
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const loadMessages = async () => {
+  try {
+    const savedMessages =
+      await AsyncStorage.getItem('messages');
+
+    if (savedMessages !== null) {
+      setMessages(JSON.parse(savedMessages));
+    } else {
+      setMessages([
+        {
+          role: 'ai',
+          text: 'هلا شلون أگدر أساعدك؟',
+        },
+      ]);
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
 
   const sendMessage = async () => {
     if (!message.trim()) return;
@@ -31,6 +89,8 @@ export default function App() {
     const currentMessage = message;
 
     setMessage('');
+
+    setLoading(true);
 
     try {
       const response = await fetch(
@@ -54,107 +114,89 @@ export default function App() {
       };
 
       setMessages(prev => [...prev, aiMessage]);
+
+      setLoading(false);
     } catch (error) {
       console.log(error);
+
+      setLoading(false);
     }
   };
 
   return (
-    <View
+    <KeyboardAvoidingView
+      behavior={
+        Platform.OS === 'ios'
+          ? 'padding'
+          : 'height'
+      }
+      keyboardVerticalOffset={20}
       style={{
         flex: 1,
         backgroundColor: '#0f172a',
-        paddingTop: 60,
-        paddingHorizontal: 20,
       }}
     >
-      <Text
-        style={{
-          color: 'white',
-          fontSize: 28,
-          fontWeight: 'bold',
-          marginBottom: 20,
-        }}
-      >
-        AI Chat 🚀
-      </Text>
-
-      <ScrollView style={{ flex: 1 }}>
-        {messages.map((item, index) => (
-          <View
-            key={index}
-            style={{
-              backgroundColor:
-                item.role === 'user'
-                  ? '#2563eb'
-                  : '#1e293b',
-
-              padding: 15,
-              borderRadius: 15,
-              marginBottom: 10,
-              alignSelf:
-                item.role === 'user'
-                  ? 'flex-end'
-                  : 'flex-start',
-
-              maxWidth: '80%',
-            }}
-          >
-            <Text
-              style={{
-                color: 'white',
-                fontSize: 16,
-              }}
-            >
-              {item.text}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
-
       <View
         style={{
-          flexDirection: 'row',
-          marginBottom: 30,
+          flex: 1,
+          backgroundColor: '#0f172a',
+          
         }}
       >
-        <TextInput
-          value={message}
-          onChangeText={setMessage}
-          placeholder="اكتب رسالة..."
-          placeholderTextColor="#94a3b8"
+       <Header clearChat={clearChat} />
+
+        <ScrollView
+          ref={scrollViewRef}
           style={{
             flex: 1,
-            backgroundColor: '#1e293b',
-            color: 'white',
-            borderRadius: 15,
-            paddingHorizontal: 15,
-            height: 55,
+            paddingHorizontal: 20,
           }}
-        />
-
-        <TouchableOpacity
-          onPress={sendMessage}
-          style={{
-            backgroundColor: '#2563eb',
-            marginLeft: 10,
-            width: 70,
-            height: 55,
-            borderRadius: 15,
-            justifyContent: 'center',
-            alignItems: 'center',
+          contentContainerStyle={{
+            paddingBottom: 20,
           }}
+          onContentSizeChange={() =>
+            scrollViewRef.current?.scrollToEnd({
+              animated: true,
+            })
+          }
         >
-          <Text
-            style={{
-              color: 'white',
-              fontWeight: 'bold',
-            }}
-          >
-            Send
-          </Text>
-        </TouchableOpacity>
+          {messages.map((item, index) => (
+  <ChatBubble
+    key={index}
+    item={item}
+  />
+))}
+
+          {loading && (
+            <View
+              style={{
+                backgroundColor: '#1e293b',
+                padding: 15,
+                borderRadius: 18,
+                marginBottom: 10,
+                alignSelf: 'flex-start',
+                maxWidth: '80%',
+              }}
+            >
+              <Text
+                style={{
+                  color: 'white',
+                  fontSize: 16,
+                }}
+              >
+                AI is typing...
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+
+      <MessageInput
+  message={message}
+  setMessage={setMessage}
+  sendMessage={sendMessage}
+  loading={loading}
+/>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
