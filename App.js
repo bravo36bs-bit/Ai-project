@@ -94,7 +94,7 @@ const loadMessages = async () => {
 
     try {
       const response = await fetch(
-        'http://192.168.0.105:5000/chat',
+        'https://nova-ai-backend-mryn.onrender.com/chat',
         {
           method: 'POST',
           headers: {

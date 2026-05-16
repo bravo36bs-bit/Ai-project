@@ -1,0 +1,15 @@
+{
+  "expo": {
+    
+"icon": "./assets/icon.png",
+    "extra": {
+      "eas": {
+        "projectId": "7e4a57b3-4daf-4ace-9680-eab01ab911f0"
+      }
+    },
+    "android": {
+      "package": "com.nova.assistant"
+      
+    }
+  }
+}
